@@ -1108,6 +1108,7 @@ async def main():
         username = os.getenv("SHOWDOWN_USERNAME")
         password = os.getenv("SHOWDOWN_PASSWORD")
         model = os.getenv("MODEL")
+        battle_format = os.getenv("BATTLE_FORMAT")
         personal_account = os.getenv("PERSONALACCOUNT")
 
         if not all([username, password, model]):
@@ -1116,7 +1117,7 @@ async def main():
         
         llm_player = LocalLLMPlayer(
             model=model,
-            battle_format="gen4randombattle",
+            battle_format=battle_format,
             account_configuration=AccountConfiguration(username, password),
             server_configuration=ShowdownServerConfiguration,
         )
