@@ -5,6 +5,10 @@ Use Large Language Models (LLMs) to battle human opponents in competitive Pokém
 The LLM functions fully autonomously — it analyzes the current game state, selects the optimal move, and executes decisions in real time.
 
 ## Requirements
+<p align="left">
+  <img src="assets/pokemonShowdownLogo.png" alt="Pokémon Showdown" width="100"/>
+  <img src="assets/ollamaLogoWhite.png" alt="Ollama" width="100"/>
+</p>
 
 - A registered [Pokémon Showdown](https://pokemonshowdown.com) account (must be password-protected)
 - [Ollama](https://ollama.com) installed locally
