@@ -2,7 +2,7 @@
 
 Use Large Language Models (LLMs) to battle human opponents in competitive Pokémon Showdown matches.
 
-The LLM functions fully autonomously — it analyzes the current game state, selects the optimal move, and executes decisions in real time.
+The LLM functions fully autonomously: it analyzes the current game state, selects the optimal move, and executes decisions in real time. No input is required by the user.
 
 ## Requirements
 <p align="left">
