@@ -612,7 +612,47 @@ class LocalLLMPlayer(Player):
             if 'poisonpowder' in filtered_actions: filtered_actions.remove('poisonpowder')
         if PokemonType.GRASS in current_opponent.types:
             if 'leechseed' in filtered_actions: filtered_actions.remove('leechseed')
+                
+        # Rule 13.5: If the opponent has an ability making it immune to certain status moves, don't use it.
+        possible_abilities = current_opponent.possible_abilities
+        if current_opponent.ability:
+            possible_abilities = [current_opponent.ability] # If ability is known, only check that one.
 
+        if possible_abilities:
+            # Powder move immunities
+            if 'overcoat' in possible_abilities or (PokemonType.GRASS in current_opponent.types and battle.gen >= 6):
+                powder_moves = ['poisonpowder', 'sleeppowder', 'spore', 'stunspore']
+                for move in powder_moves:
+                    if move in filtered_actions:
+                        print(f"[TACTICAL FILTER] Removing '{move}' (Opponent is immune to powder moves).")
+                        filtered_actions.remove(move)
+
+            # Sleep immunities
+            if any(ability in ['insomnia', 'vitalsprit'] for ability in possible_abilities):
+                sleep_moves = ['darkvoid', 'grasswhistle', 'hypnosis', 'lovelykiss', 'sing', 'sleeppowder', 'spore', 'yawn']
+                for move in sleep_moves:
+                    if move in filtered_actions:
+                        print(f"[TACTICAL FILTER] Removing '{move}' (Opponent is immune to sleep).")
+                        filtered_actions.remove(move)
+
+            # Burn immunity
+            if 'waterveil' in possible_abilities and 'willowisp' in filtered_actions:
+                print("[TACTICAL FILTER] Removing 'willowisp' (Opponent has Water Veil).")
+                filtered_actions.remove('willowisp')
+
+            # Paralysis immunity
+            if 'limber' in possible_abilities or (PokemonType.ELECTRIC in current_opponent.types and battle.gen >= 6):
+                paralysis_moves = ['thunderwave', 'glare', 'nuzzle']
+                for move in paralysis_moves:
+                    if move in filtered_actions:
+                        print(f"[TACTICAL FILTER] Removing '{move}' (Opponent is immune to paralysis).")
+                        filtered_actions.remove(move)
+            
+            # Taunt immunity
+            if 'oblivious' in possible_abilities and 'taunt' in filtered_actions and battle.gen >= 6:
+                print("[TACTICAL FILTER] Removing 'taunt' (Opponent has Oblivious).")
+                filtered_actions.remove('taunt')
+                
         # Rule 14: Pain Split
         if 'painsplit' in filtered_actions and active_pokemon.current_hp_fraction >= current_opponent.current_hp_fraction:
             print("[GAME LOG] Removing 'painsplit' (HP >= opponent HP).")
