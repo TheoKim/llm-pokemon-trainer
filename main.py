@@ -1042,6 +1042,83 @@ class LocalLLMPlayer(Player):
             # Normally, the faster Pokemon moves first.
             return my_speed > opponent_speed
             
+    def step_on_throat(self, battle, legal_actions, damage_info):
+        # If the opponent is at low HP and we can KO it, this function will
+        # restrict the legal actions to only moves that can secure the KO.
+
+        # get_effective_speed just calculates speed stat, with some modifiers.
+        # we now have to determine who goes first.
+        am_i_faster = self.determine_who_moves_first(battle)
+
+        if not am_i_faster:
+            return legal_actions
+
+        ko_moves = []
+        for move_id, info in damage_info.items():
+            # Check if the move's expected damage is enough to KO
+            if info.get('expected_damage', 0) >= 2.5:
+                ko_moves.append(move_id)
+
+        # If we found any KOing moves, this is the only option we should consider.
+        if ko_moves:
+            print(f"[STEP ON THROAT] Prioritizing KO moves: {ko_moves}")
+            return ko_moves
+            
+        return legal_actions
+
+    def mortal_peril_alert(self, battle, legal_actions, damage_info):
+        # If the active pokemon is in danger of being KOed by an opponent,
+        # this function restricts the available actions to either KOing the opponent
+        # or switching to a safer Pokemon.
+
+        # Note that this function only applies to blatantly one-sided matchups:
+        # STAB super effective moves (3x damage)
+        # Quad super effective coverage moves (4x damage)
+
+        # It's entirely possible to survive super effective stray hits
+  
+        my_pokemon = battle.active_pokemon
+        opponent = battle.opponent_active_pokemon
+        am_i_faster = self.determine_who_moves_first(battle)
+
+        has_ko_threat = False
+
+        # Check if the opponent has a revealed quad effective coverage move
+        if opponent.moves:
+            if any(my_pokemon.damage_multiplier(move) == 4 for move in opponent.moves.values()):
+                has_ko_threat = True
+
+        # If no moves are revealed, check if their potential STAB moves are super effective
+        else:
+            if any(my_pokemon.damage_multiplier(t) > 1 for t in opponent.types if t is not None):
+                has_ko_threat = True
+
+        # If neither of the above are true: return original list - we are not in mortal peril.
+        if not has_ko_threat:
+            return legal_actions
+        
+        all_possible_switches = [f"switch-{p.species.lower().replace(' ', '-')}" for p in battle.available_switches]
+        viable_switch_names = self.filter_suboptimal_switches(battle, all_possible_switches)
+
+        # If opponent has KO threat, can we outspeed it?
+        if has_ko_threat:
+            if not am_i_faster:
+                print(f"[MORTAL PERIL] {my_pokemon.species} is slower and weak to {opponent.species}. Forcing switches only.")
+                # Find all viable switches
+                return viable_switch_names
+            
+            else:
+                # Find any moves we have that could KO the opponent in return
+                ko_moves = [move_id for move_id, info in damage_info.items() if info.get('expected_damage', 0) >= 2]
+                if len(ko_moves) == 0:
+                    print(f"[MORTAL PERIL] {my_pokemon.species} is faster but cannot OHKO {opponent.species}. Forcing switches only.")
+                    return viable_switch_names
+                
+                else:
+                    print(f"[MORTAL PERIL] {my_pokemon.species} is faster, can OHKO {opponent.species}, but is in danger of being KO'ed. Forcing KO moves only.")
+                    final_options = ko_moves
+                    return final_options
+                    
     async def choose_move(self, battle):
         if battle.active_pokemon.must_recharge:
             print("[GAME LOG] Must recharge. Passing turn.")
