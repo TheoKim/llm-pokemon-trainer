@@ -998,7 +998,50 @@ class LocalLLMPlayer(Player):
         
         if not battle.available_moves:
             print(f"[GAME LOG] WARNING: Waited {max_wait}s but still no moves available.")
+            
+    def get_effective_speed(self, battle):
+        # Calculates and returns the effective speed of both active Pokemon.
+        # Takes into account stats, boosts, paralysis, and Tailwind.
 
+        my_pokemon = battle.active_pokemon
+        opponent_pokemon = battle.opponent_active_pokemon
+        
+        def calculate_speed(pokemon, side_conditions):
+            speed = pokemon.stats['spe']
+            boost = pokemon.boosts.get('spe', 0)
+            if boost > 0: speed *= (2 + boost) / 2
+            elif boost < 0: speed *= 2 / (2 - boost)
+
+            if pokemon.ability == 'slushrush' and battle.weather in [Weather.HAIL, Weather.SNOW]: speed *= 2
+            if pokemon.ability == 'swiftswim' and battle.weather in [Weather.RAINDANCE, Weather.PRIMORDIALSEA]: speed *= 2
+            if pokemon.ability == 'chlorophyll' and battle.weather in [Weather.SUNNYDAY, Weather.DESOLATELAND]: speed *= 2
+            if pokemon.ability == 'slowstart' and pokemon.turn_count < 5: speed *= 0.5
+            if pokemon.status == Status.PAR:
+                speed *= 0.5 if battle.gen >= 7 else 0.25
+            if SideCondition.TAILWIND in side_conditions: speed *= 2
+
+            return speed
+
+        my_speed = calculate_speed(my_pokemon, battle.side_conditions)
+        opponent_speed = calculate_speed(opponent_pokemon, battle.opponent_side_conditions)
+        
+        return my_speed, opponent_speed
+
+    def determine_who_moves_first(self, battle):
+        # Determines if the player's pokemon is expected to move first based on speed, ignoring move priority.
+
+        my_speed, opponent_speed = self.get_effective_speed(battle)
+        
+        # Check if Trick Room is active
+        is_trick_room = Field.TRICK_ROOM in battle.fields
+        
+        if is_trick_room:
+            # In Trick Room, the slower Pokemon moves first.
+            return my_speed < opponent_speed
+        else:
+            # Normally, the faster Pokemon moves first.
+            return my_speed > opponent_speed
+            
     async def choose_move(self, battle):
         if battle.active_pokemon.must_recharge:
             print("[GAME LOG] Must recharge. Passing turn.")
