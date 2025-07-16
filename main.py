@@ -384,6 +384,16 @@ class LocalLLMPlayer(Player):
         active_pokemon = battle.active_pokemon
         current_opponent = battle.opponent_active_pokemon
 
+        # These are the most important circumstances to consider on any given turn:
+        # Can we KO our opponent on this turn, or are we in danger of being KO'ed?
+
+        # Rule 0: Mortal peril
+        filtered_actions = self.mortal_peril_alert(battle, filtered_actions, damage_map)
+
+        # Rule 0.5: Step on throats
+        if current_opponent.current_hp_fraction < 0.5:   
+            filtered_actions = self.step_on_throat(battle, filtered_actions, damage_map)
+            
         # Rule 1: Don't use healing moves if HP is high
         if active_pokemon.current_hp_fraction >= 0.66:
             healing_moves = [
